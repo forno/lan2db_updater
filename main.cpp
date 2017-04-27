@@ -1,6 +1,10 @@
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <regex>
+#include <string>
+#include <utility>
 
 #include "mysql_connection.h"
 
@@ -11,9 +15,56 @@
 #include <cppconn/statement.h>
 
 constexpr auto default_host {"localhost"};
-constexpr auto default_user {"worlduser"};
-constexpr auto default_pass {"worldpass"};
-constexpr auto default_db {"world"};
+constexpr auto default_user {"lanwatcher"};
+constexpr auto default_pass {"lanwatcherpass"};
+constexpr auto default_db   {"lan"};
+
+namespace
+{
+
+constexpr auto msg_for_enable {"associated"};
+constexpr auto msg_for_desable {"disassociated"};
+const std::regex mac_address_regex {R"([\da-f]{2}(:[\da-f]{2}){5})"};
+
+class access_data
+{
+  bool connecting_flg {false};
+  bool enable {false};
+  std::string mac_address {};
+
+public:
+  access_data() = default;
+
+  access_data(const std::string log)
+    : connecting_flg {log.find(msg_for_enable) != std::string::npos},
+      enable {connecting_flg || log.find(msg_for_desable) != std::string::npos}
+  {
+    if (!enable)
+      return;
+    std::sregex_iterator match_it {log.begin(), log.end(), mac_address_regex};
+    if (match_it != std::sregex_iterator{})
+      mac_address = match_it->str();
+
+    assert(!mac_address.empty());
+  }
+
+  operator bool()
+  {
+    return enable;
+  }
+
+  bool is_connecting()
+  {
+    return connecting_flg;
+  }
+
+  std::string get_address()
+  {
+    return mac_address;
+  }
+};
+
+}
 
 int main(int argc, char** argv)
 {
@@ -25,15 +76,22 @@ int main(int argc, char** argv)
   const std::string pass     {argc >= 4 ? argv[3] : default_pass};
   const std::string database {argc >= 5 ? argv[4] : default_db};
 
+  std::string log;
+  if (!std::getline(std::cin, log)) {
+    std::cerr << "Cannot read the log data";
+    return EXIT_FAILURE;
+  };
+
+  access_data data {std::move(log)};
+  if (!data) // invalid log
+    return EXIT_SUCCESS;
+  std::cout << data.get_address() << std::cout.widen('\n') <<
+               data.is_connecting() << std::cout.widen('\n');
+
   try {
     sql::Driver* driver {get_driver_instance()};
     std::unique_ptr<sql::Connection> con {driver->connect(url, user, pass)};
     con->setSchema(database);
-    std::unique_ptr<sql::Statement> stmt {con->createStatement()};
-
-    std::unique_ptr<sql::ResultSet> res {stmt->executeQuery("SELECT count(*) from country")};
-    res->next();
-    std::cout << "count = " << res->getInt(1) << std::endl;
   } catch (sql::SQLException &e) {
     std::cerr << "# ERR: SQLException in " << __FILE__;
     std::cerr << "(" << __FUNCTION__ << ") on line " << __LINE__ << std::endl;
