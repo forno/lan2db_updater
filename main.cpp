@@ -22,8 +22,8 @@ constexpr auto default_db   {"lan"};
 namespace
 {
 
-constexpr auto msg_for_enable {"associated"};
 constexpr auto msg_for_desable {"disassociated"};
+constexpr auto msg_for_enable {"associated"};
 const std::regex mac_address_regex {R"([\da-f]{2}(:[\da-f]{2}){5})"};
 
 class access_data
@@ -36,8 +36,8 @@ public:
   access_data() = default;
 
   access_data(const std::string log)
-    : connecting_flg {log.find(msg_for_enable) != std::string::npos},
-      enable {connecting_flg || log.find(msg_for_desable) != std::string::npos}
+    : connecting_flg {log.find(msg_for_desable) == std::string::npos},
+      enable {connecting_flg || log.find(msg_for_enable) != std::string::npos}
   {
     if (!enable)
       return;
