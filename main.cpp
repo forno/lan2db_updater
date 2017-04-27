@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <regex>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -85,13 +86,17 @@ int main(int argc, char** argv)
   access_data data {std::move(log)};
   if (!data) // invalid log
     return EXIT_SUCCESS;
-  std::cout << data.get_address() << std::cout.widen('\n') <<
-               data.is_connecting() << std::cout.widen('\n');
+
+  std::stringstream sql;
+  sql << "CALL update_mac_address('" << data.get_address() << "','" << std::boolalpha << data.is_connecting() << "')";
 
   try {
     sql::Driver* driver {get_driver_instance()};
     std::unique_ptr<sql::Connection> con {driver->connect(url, user, pass)};
     con->setSchema(database);
+    std::unique_ptr<sql::Statement> stmt {con->createStatement()};
+
+    stmt->execute(sql.str());
   } catch (sql::SQLException &e) {
     std::cerr << "# ERR: SQLException in " << __FILE__;
     std::cerr << "(" << __FUNCTION__ << ") on line " << __LINE__ << std::endl;
