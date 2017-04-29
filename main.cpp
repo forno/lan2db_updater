@@ -29,16 +29,16 @@ const std::regex mac_address_regex {R"([\da-f]{2}(:[\da-f]{2}){5})"};
 
 class access_data
 {
-  bool connecting_flg {false};
   bool enable {false};
+  bool connecting_flg {false};
   std::string mac_address {};
 
 public:
   access_data() = default;
 
   access_data(const std::string log)
-    : connecting_flg {log.find(msg_for_desable) == std::string::npos},
-      enable {connecting_flg || log.find(msg_for_enable) != std::string::npos}
+    : enable {log.find(msg_for_enable) != std::string::npos},
+      connecting_flg {enable && log.find(msg_for_desable) == std::string::npos}
   {
     if (!enable)
       return;
@@ -49,17 +49,17 @@ public:
     assert(!mac_address.empty());
   }
 
-  operator bool()
+  operator bool() const noexcept
   {
     return enable;
   }
 
-  bool is_connecting()
+  bool is_connecting() const noexcept
   {
     return connecting_flg;
   }
 
-  std::string get_address()
+  std::string get_address() const noexcept
   {
     return mac_address;
   }
