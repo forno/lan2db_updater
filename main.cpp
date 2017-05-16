@@ -15,13 +15,13 @@
 #include <cppconn/resultset.h>
 #include <cppconn/statement.h>
 
+namespace
+{
+
 constexpr auto default_host {"localhost"};
 constexpr auto default_user {"lanwatcher"};
 constexpr auto default_pass {"lanwatcherpass"};
 constexpr auto default_db   {"lan"};
-
-namespace
-{
 
 constexpr auto msg_for_desable {"disassociated"};
 constexpr auto msg_for_enable {"associated"};
@@ -43,8 +43,11 @@ public:
     if (!enable)
       return;
     std::sregex_iterator match_it {log.begin(), log.end(), mac_address_regex};
-    if (match_it != std::sregex_iterator{})
-      mac_address = match_it->str();
+    if (match_it == std::sregex_iterator{}) {
+      enable = false;
+      return;
+    }
+    mac_address = match_it->str();
 
     assert(!mac_address.empty());
   }
@@ -80,15 +83,15 @@ int main(int argc, char** argv)
   std::string log;
   if (!std::getline(std::cin, log)) {
     std::cerr << "Cannot read the log data";
-    return EXIT_FAILURE;
+    return EXIT_SUCCESS;
   };
 
   access_data data {std::move(log)};
   if (!data) // invalid log
     return EXIT_SUCCESS;
 
-  std::stringstream sql;
-  sql << "CALL update_mac_address('" << data.get_address() << "','" << std::boolalpha << data.is_connecting() << "')";
+  std::stringstream sst;
+  sst << "CALL update_mac_address('" << data.get_address() << "','" << std::boolalpha << data.is_connecting() << "')";
 
   try {
     sql::Driver* driver {get_driver_instance()};
@@ -96,16 +99,12 @@ int main(int argc, char** argv)
     con->setSchema(database);
     std::unique_ptr<sql::Statement> stmt {con->createStatement()};
 
-    stmt->execute(sql.str());
+    stmt->execute(sst.str());
   } catch (sql::SQLException &e) {
-    std::cerr << "# ERR: SQLException in " << __FILE__;
-    std::cerr << "(" << __FUNCTION__ << ") on line " << __LINE__ << std::endl;
-    std::cerr << "# ERR: " << e.what();
-    std::cerr << " (MySQL error code: " << e.getErrorCode();
-    std::cerr << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    std::cerr << "# ERR: " << e.what() <<
+      " (MySQL error code: " << e.getErrorCode() <<
+      ", SQLState: " << e.getSQLState() << " )" << std::endl;
 
     return EXIT_FAILURE;
   }
-
-  return EXIT_SUCCESS;
 }
