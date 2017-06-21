@@ -82,15 +82,15 @@ int main(int argc, char** argv)
 
   std::string log;
   if (!std::getline(std::cin, log)) {
-    std::cerr << "Cannot read the log data";
-    return EXIT_SUCCESS;
+//    std::cerr << "Cannot read the log data";
+    return EXIT_FAILURE;
   };
 
   access_data data {std::move(log)};
   if (!data) // invalid log
     return EXIT_SUCCESS;
 
-  std::stringstream sst;
+  std::ostringstream sst;
   sst << "CALL update_mac_address('" << data.get_address() << "','" << std::boolalpha << data.is_connecting() << "')";
 
   try {
@@ -101,9 +101,9 @@ int main(int argc, char** argv)
 
     stmt->execute(sst.str());
   } catch (sql::SQLException &e) {
-    std::cerr << "# ERR: " << e.what() <<
-      " (MySQL error code: " << e.getErrorCode() <<
-      ", SQLState: " << e.getSQLState() << " )" << std::endl;
+//    std::cerr << "# ERR: " << e.what() <<
+//      " (MySQL error code: " << e.getErrorCode() <<
+//      ", SQLState: " << e.getSQLState() << " )" << std::endl;
 
     return EXIT_FAILURE;
   }
