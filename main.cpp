@@ -80,29 +80,29 @@ int main(int argc, char** argv)
   const std::string pass     {argc >= 4 ? argv[3] : default_pass};
   const std::string database {argc >= 5 ? argv[4] : default_db};
 
+  sql::Driver* driver {get_driver_instance()};
+  std::unique_ptr<sql::Connection> con {driver->connect(url, user, pass)};
+  con->setSchema(database);
+  std::unique_ptr<sql::Statement> stmt {con->createStatement()};
+
   for (std::string log; std::getline(std::cin, log);) {
-    access_data data {std::move(log)};
+    access_data data {log};
     if (!data) // invalid log
-      return EXIT_SUCCESS;
+      continue;
 
     std::ostringstream sst;
     sst << "CALL update_mac_address('" << data.get_address() << "','" << std::boolalpha << data.is_connecting() << "')";
 
     try {
-      sql::Driver* driver {get_driver_instance()};
-      std::unique_ptr<sql::Connection> con {driver->connect(url, user, pass)};
-      con->setSchema(database);
-      std::unique_ptr<sql::Statement> stmt {con->createStatement()};
-
       stmt->execute(sst.str());
     } catch (sql::SQLException &e) {
       //    std::cerr << "# ERR: " << e.what() <<
       //      " (MySQL error code: " << e.getErrorCode() <<
       //      ", SQLState: " << e.getSQLState() << " )" << std::endl;
 
-      return EXIT_SUCCESS;
+      return EXIT_FAILURE;
     } catch (...) { // XXX: For avoid suspend
-      return EXIT_SUCCESS;
+      return EXIT_FAILURE;
     }
   }
 }
